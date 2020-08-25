@@ -2,26 +2,40 @@
 % Please edit documentation in R/runLoops.R
 \name{loopTillConvergence}
 \alias{loopTillConvergence}
-\title{Loop scMatrixtest until convergence}
+\title{Loop testAllSigMatrices until convergence}
 \usage{
-loopTillConvergence(numLoops, fastStop, exprData, changePer, handMetaCluster)
+loopTillConvergence(
+  numLoops,
+  fastStop,
+  exprData,
+  changePer,
+  handMetaCluster,
+  testOnHalf
+)
 }
 \arguments{
 \item{numLoops}{The number of iterations. Set to null to loop until results converge.}
 
-\item{fastStop}{Set to TRUE to break the loop when correlation, correlation spear, mae and rmse all converge.}
+\item{fastStop}{Set to TRUE to break the loop when correlation, correlation spear, mae and rmse all converge}
 
 \item{exprData}{The single cell matrix}
 
 \item{changePer}{The maximum percentage of change allowed for convergence#'}
 
-\item{handMetaCluster}{Load in pre-defined meta clusters. Set to NULL to automatically group indistinguishable 
-cells into same cluster use clustWspillOver(DEFAULT: NULL)}
+\item{handMetaCluster}{A List of pre-defined meta clusters. Set to NULL to automatically group indistinguishable 
+cells into same cluster use clustWspillOver (DEFAULT: NULL)}
+
+\item{testOnHalf}{Set to TRUE to leave half the data as a test set to validate all the matrices}
 }
 \value{
-A list of results generated from all the iterative calls of scMatrixTest
+A list of results generated from all the iterative calls of testAllSigMatrices
 }
 \description{
-Iteratively call scMatrixtest numLoops times with the option to fast stop 
-if correlation, correlation spear, mae and rmse all converge
+Iteratively call testAllSigMatrices numLoops times with the option to fast stop 
+ if correlation, correlation spear, mae and rmse all converge
+}
+\examples{
+toy<- ADAPTSdata3::normalData.5061[1:2000,1:15]
+options(mc.cores=2)
+loopTillConvergence(numLoops=NULL,fastStop=TRUE,exprData=toy,changePer=10,handMetaCluster=NULL,testOnHalf=TRUE)
 }

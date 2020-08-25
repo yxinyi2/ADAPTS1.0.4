@@ -223,7 +223,7 @@ clustWspillOver <- function(sigMatrix, geneExpr, nPasses=100, deconMatrices=NULL
       #Note:  Why is it imputing later if I've removed all of these??? I need to fix the NA problem better.
     } #if(is.null(deconMatrices)) {
     
-    deconMatrices <- spillToConvergence(sigMatrix=sigMatrix, geneExpr=curGeneExpr,plotIt=TRUE, nPasses=nPasses, method=method)
+    deconMatrices <- spillToConvergence(sigMatrix=sigMatrix, geneExpr=curGeneExpr,plotIt=FALSE, nPasses=nPasses, method=method)
   }
   curExpr <- estCellCounts.nPass(geneExpr=sigMatrix, deconMatrices=deconMatrices, method=method)
   

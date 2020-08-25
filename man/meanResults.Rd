@@ -7,14 +7,14 @@
 meanResults(allResList, changePer = 1)
 }
 \arguments{
-\item{allResList}{A list of results generated from all the iterative calls of scMatrixTest}
+\item{allResList}{A list of results generated from all the iterative calls of testAllSigMatrices}
 
 \item{changePer}{The maximum percentage of change allowed for convergence}
 }
 \value{
-The mean and standard deviation of all the results, along with the mumber of iterations needed for the results to converge.
+The mean and standard deviation of all the results, along with the number of iterations needed for the results to converge.
 }
 \description{
-Calcualte the mean and the standard deviation of the reaults from all the iterations, and also 
+Calculate the mean and the standard deviation of the results from all the iterations, and also 
 test for convergence by % of change with each additional iteration.
 }

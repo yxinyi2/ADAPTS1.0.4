@@ -1,3 +1,4 @@
+
 #' Build a deconvolution seed matrix, add the proportional option 
 #' @description Use ranger to select features and build a genesInSeed gene matrix
 #'
@@ -54,57 +55,58 @@ buildSeed <- function(trainSet, genesInSeed=200, groupSize=30, randomize=TRUE, n
   seedMat <- trainSet.3sam[rownames(trainSet.3sam) %in% topGenes,]
   cellTypes <- sub('\\.[0-9]+$', '', colnames(seedMat))
   seedMat <- t(apply(seedMat, 1, function(x){tapply(x, cellTypes, mean, na.rm=TRUE)}))
-  if(plotIt==TRUE) {pheatmap:: pheatmap(seedMat, main='Marker Gene Matrix, train, log2(x+1)') }
+  if(plotIt==TRUE) {pheatmap:: pheatmap(seedMat, main=paste('Seed Matrix','\n# Cell Types:',ncol(seedMat),'| # Genes:',nrow(seedMat))) }
   return(seedMat)
 }
   
   
-#' Load pre-defined clusters
-#' @description Load a pre-specified cluster list that can be called by handMetaCluster()
-#'
-#' @export
-#' @return A list of grouped clusters 
-#' @examples 
-#' handCluster<-loadHandClusters()  
-loadHandClusters <- function() {
-    metaList <- list()
-    metaList[[1]] <- c('Cluster_0')  #DuctalCellType 2 
-    metaList[[2]] <- c('Cluster_1', 'Cluster_9', 'Cluster_11')  #DuctalCellType 1 
-    metaList[[3]] <- c('Cluster_2', 'Cluster_13', 'Cluster_14')  #Endothelial 
-    metaList[[4]] <- c('Cluster_3', 'Cluster_5', 'Cluster_12')  #Stellate_Fibroblast 
-    metaList[[5]] <- c('Cluster_4')  #Macrophage 
-    metaList[[6]] <- c('Cluster_6')  #TCell
-    metaList[[7]] <- c('Cluster_7')  #BCell
-    metaList[[8]] <- c('Cluster_8')  #Acinar
-    metaList[[9]] <- c('Cluster_10')  #PlasmaCell
-    return(metaList)
-  }
+
+   
+   
 
 
-#' Generate all the signature matrices one time
-#' @description  This wrapper is helpful for repetively matrix generation. It generates seed matrix, all-gene matrix, augmneted matrix, shrunk matrix,
+
+#' Generate all the signature matrices one time with the option to leave out half of the data as a test set
+#' @description  This wrapper is helpful for repetitively matrix generation. It generates seed matrix, all-gene matrix, augmented matrix, shrunk matrix,
 #' and all the clustered matrices in one call.
 #'
 #' @param exprData The gene express data. Each row is a gene, and each column is an example of a particular cell type.
-#' @param randomize Set to TRUE randomize the sets selected by ADAPTS::scSample (DEFAULT: TRUE)
+#' @param randomize Set to to TRUE randomize the sets selected by ADAPTS::scSample (DEFAULT: TRUE)
 #' @param skipShrink Set to TRUE to skip shrinking the signatrure matrix (DEFAULT: TRUE)
 #' @param proportional Set to true to make the training set cell type proportional.  Ignores group size (DEFAULT: FALSE)
-#' @param handMetaCluster Load in pre-defined meta clusters. Set to NULL to automatically group indistinguishable 
-#' cells into same cluster use clustWspillOver(DEFAULT: NULL)
+#' @param handMetaCluster A List of pre-defined meta clusters.Set to NULL to automatically group indistinguishable cells 
+#' into same cluster using clustWspillOver.(DEFAULT: NULL)
+#' @param testOnHalf Set to TRUE to leave half the data as a test set
 #'
 #' @export
 #' @return A list of results including prediction accuracy and cell enrichment
 #'
 #' @examples
-
-scMatrixTest<-function(exprData, randomize = TRUE, skipShrink=FALSE, proportional=FALSE,handMetaCluster=NULL) {
+#' normalData <- log(ADAPTSdata3::normalData.5061+1)
+#' toy<-normalData[1:2000,1:15]
+#' colnames(toy) <- sub('\\..*','', colnames(toy))
+#' metaList <- list()
+#' metaList[[1]] <- c(colnames(toy)[1])  #Cell Type 1
+#' metaList[[2]] <- c(colnames(toy)[2])  #Cell Type 2
+#' metaList[[3]] <- c(colnames(toy)[3])  #Cell Type 3
+#' metaList[[4]] <- c(colnames(toy)[4:length(unique(colnames(toy)))])  #Cell Type 4
+#' testAllSigMatrices(exprData=toy, randomize = TRUE, skipShrink=FALSE, proportional=FALSE,handMetaCluster=metaList,testOnHalf=TRUE)
+    
+testAllSigMatrices<-function(exprData, randomize = TRUE, skipShrink=FALSE, proportional=FALSE,handMetaCluster=NULL,testOnHalf=TRUE) {
   
   if(randomize==TRUE) {set.seed(Sys.time())}
   resList <- list()
   
-  trainTestSet <- ADAPTS::splitSCdata(exprData, numSets=2, randomize = randomize)
-  trainSet <- trainTestSet[[1]]
-  testSet <-trainTestSet[[2]]
+  if(testOnHalf == TRUE){
+    trainTestSet <- ADAPTS::splitSCdata(exprData, numSets=2, randomize = randomize)
+    trainSet <- trainTestSet[[1]]
+    testSet <-trainTestSet[[2]]
+  }
+  else {
+  trainSet <- exprData
+  testSet <- exprData
+}
+  
   
   trainSet.30sam <- ADAPTS::scSample(RNAcounts = trainSet, groupSize = 30, randomize = randomize)
   trainSet.3sam <- ADAPTS::scSample(RNAcounts = trainSet, groupSize = 3, randomize = randomize)
@@ -170,7 +172,7 @@ scMatrixTest<-function(exprData, randomize = TRUE, skipShrink=FALSE, proportiona
   #Clustering
   
   if(!is.null(handMetaCluster)) {
-    resList[['allClusters']]  <- loadHandClusters()
+    resList[['allClusters']]  <- handMetaCluster
   } else {
     varClusts <- ADAPTS::clustWspillOver(sigMatrix = augTrain.shrink, geneExpr = trainSet.3sam)
     resList[['allClusters']]  <- varClusts$allClusters
@@ -275,9 +277,7 @@ scMatrixTest<-function(exprData, randomize = TRUE, skipShrink=FALSE, proportiona
 #' @param winSize  The window size for mean calculation
 #'
 #' @return The minimum number of iterations needed for the results to converge
-#' @export
-#'
-#' @examples
+
 findConvergenceIter <- function(curSeq, changePer=1, winSize=5) {
   
   #Note, this will remove NAs.  Is that best?  They're caused by bad correlations
@@ -299,15 +299,14 @@ findConvergenceIter <- function(curSeq, changePer=1, winSize=5) {
 
 
 #' A meta analysis for the results from multiple iterations
-#' @description Calcualte the mean and the standard deviation of the reaults from all the iterations, and also 
+#' @description Calculate the mean and the standard deviation of the results from all the iterations, and also 
 #' test for convergence by % of change with each additional iteration.
 #' 
-#' @param allResList A list of results generated from all the iterative calls of scMatrixTest
+#' @param allResList A list of results generated from all the iterative calls of testAllSigMatrices
 #' @param changePer  The maximum percentage of change allowed for convergence
 #'
-#' @return The mean and standard deviation of all the results, along with the mumber of iterations needed for the results to converge.
-#' @export
-#' @examples
+#' @return The mean and standard deviation of all the results, along with the number of iterations needed for the results to converge.
+
 
 meanResults <- function (allResList,changePer=1) {
   testNames <- unique(sub('^.*\\.', '', names(allResList[[1]])))
@@ -336,7 +335,7 @@ meanResults <- function (allResList,changePer=1) {
   for (curName in testNames) {
     for (curComp in compTypes) {
       curMean <- mean(compList[[curName]][[curComp]], na.rm = TRUE)
-      curSD <- sd(compList[[curName]][[curComp]], na.rm = TRUE)
+      curSD <- stats::sd(compList[[curName]][[curComp]], na.rm = TRUE)
       resMat[curName,curComp] <- curMean
       resMat[curName,paste0(curComp,'.sd')] <- curSD
       
@@ -357,23 +356,26 @@ meanResults <- function (allResList,changePer=1) {
 
 
 
-#' Loop scMatrixtest until convergence
-#' @description Iteratively call scMatrixtest numLoops times with the option to fast stop 
-#' if correlation, correlation spear, mae and rmse all converge
-#' 
+#' Loop testAllSigMatrices until convergence
+#' @description Iteratively call testAllSigMatrices numLoops times with the option to fast stop 
+#'  if correlation, correlation spear, mae and rmse all converge
 #' @param numLoops The number of iterations. Set to null to loop until results converge.
-#' @param fastStop Set to TRUE to break the loop when correlation, correlation spear, mae and rmse all converge.
+#' @param fastStop Set to TRUE to break the loop when correlation, correlation spear, mae and rmse all converge
 #' @param exprData The single cell matrix
 #' @param changePer The maximum percentage of change allowed for convergence#' 
-#' @param handMetaCluster Load in pre-defined meta clusters. Set to NULL to automatically group indistinguishable 
-#' cells into same cluster use clustWspillOver(DEFAULT: NULL)
+#' @param handMetaCluster A List of pre-defined meta clusters. Set to NULL to automatically group indistinguishable 
+#' cells into same cluster use clustWspillOver (DEFAULT: NULL)
+#' @param testOnHalf Set to TRUE to leave half the data as a test set to validate all the matrices
 
 #'
-#' @return  A list of results generated from all the iterative calls of scMatrixTest
+#' @return  A list of results generated from all the iterative calls of testAllSigMatrices
 #' @export
 #'
 #' @examples
-loopTillConvergence<-function(numLoops,fastStop,exprData,changePer,handMetaCluster){
+#' toy<- ADAPTSdata3::normalData.5061[1:2000,1:15]
+#' options(mc.cores=2)
+#' loopTillConvergence(numLoops=NULL,fastStop=TRUE,exprData=toy,changePer=10,handMetaCluster=NULL,testOnHalf=TRUE)
+loopTillConvergence<-function(numLoops,fastStop,exprData,changePer,handMetaCluster,testOnHalf){
   if(is.null(numLoops)){
     fastStop<-TRUE
     numLoops<-1000000
@@ -381,7 +383,7 @@ loopTillConvergence<-function(numLoops,fastStop,exprData,changePer,handMetaClust
   allResListOut <- list()
   for (i in 1:numLoops) {
     curName <- paste0('res', i)
-    allResListOut[[curName]] <- try(scMatrixTest(exprData, randomize = TRUE, proportional=FALSE, handMetaCluster=handMetaCluster))
+    allResListOut[[curName]] <- try(testAllSigMatrices(exprData, randomize = TRUE, proportional=FALSE, handMetaCluster=handMetaCluster,testOnHalf=testOnHalf))
     if(fastStop==TRUE){
       covtmp<-meanResults(allResList=allResListOut,changePer)[ ,c("convIt.rho.cor", "convIt.spear.rho", "convIt.mae","convIt.rmse")]
       if(all(!is.na(covtmp))) break
