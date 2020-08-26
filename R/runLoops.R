@@ -123,7 +123,7 @@ testAllSigMatrices<-function(exprData, randomize = TRUE, skipShrink=FALSE, propo
   
   estimates.onTest <- as.data.frame(ADAPTS::estCellPercent.DCQ(seedMat, pseudobulk.test))
   
-  colnames(estimates.onTest) <- paste(genesInSeed, 'Marker Genes Seed')
+  colnames(estimates.onTest) <- paste('Seed Matrix')
   estimates.onTest$actFrac.test <- round(actFrac.test[rownames(estimates.onTest)],2)
   resList[['estimates.onTest']] <- estimates.onTest
   
@@ -215,16 +215,16 @@ testAllSigMatrices<-function(exprData, randomize = TRUE, skipShrink=FALSE, propo
   genesInSeed<-100
   metaseedMat <-buildSeed(metatrainSet, genesInSeed=genesInSeed, groupSize=30, randomize=TRUE, num.trees=1000, plotIt=FALSE, trainSet.3sam=metatrainSet.3sam, trainSet.30sam=metatrainSet.30sam,proportional = proportional)
   
-  resList[['matrix.meta']] <- metaseedMat
+  resList[['matrix.metaSeed']] <- metaseedMat
   
   estimates.Meta.onTest <- as.data.frame(ADAPTS::estCellPercent.DCQ(metaseedMat, metapseudobulk.test))
   
-  colnames(estimates.Meta.onTest) <- paste(genesInSeed, 'Marker Genes Seed')
+  colnames(estimates.Meta.onTest) <- paste('Seed Meta')
   estimates.Meta.onTest$actFrac.test <- round(meta.actFrac[rownames(estimates.Meta.onTest)],2)
   
   resList[['estimates.onTest.meta']] <- estimates.Meta.onTest
   
-  resList[['testAcc.meta']] <- seed2TestAcc.meta <- ADAPTS::calcAcc(estimates=estimates.Meta.onTest[,1], reference=estimates.Meta.onTest[,2])
+  resList[['testAcc.metaSeed']] <- seed2TestAcc.meta <- ADAPTS::calcAcc(estimates=estimates.Meta.onTest[,1], reference=estimates.Meta.onTest[,2])
   
   
   #meta all gene
@@ -310,7 +310,7 @@ findConvergenceIter <- function(curSeq, changePer=1, winSize=5) {
 
 meanResults <- function (allResList,changePer=1) {
   testNames <- unique(sub('^.*\\.', '', names(allResList[[1]])))
-  testNames <- testNames[!testNames %in% c("onTest", "allClusters", "LUT")]
+  testNames <- testNames[!testNames %in% c("onTest", "allClusters", "LUT", "meta")]
   compTypes <- names(allResList[[1]][[paste0('testAcc.', testNames[1])]])
   
   allResList <- allResList[!sapply(allResList, function(x){inherits(x,'try-error')})]

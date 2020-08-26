@@ -1,0 +1,84 @@
+---
+title: "ADAPTS Vignette #5"
+subtitle: 'Getting More Consistant Results by Iteratively Building Matrices '
+author: "Xinyi Yan"
+date: "8/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,dpi = 65,fig.retina = 1.5)
+library(devtools) 
+devtools::install_github('yxinyi2/ADAPTSdata4')
+
+```
+
+<p>Install ADAPTSdata4 using the code: <p>
+
+<p>install.packages(‘devtools’) <p>
+
+<p>library(devtools) <p>
+
+<p>devtools::install_github(‘yxinyi2/ADAPTSdata4’)<p>
+
+
+```{r libraries, echo=FALSE, warning=FALSE}
+library(ADAPTS)
+library(ADAPTSdata4)
+library(pheatmap)
+library(parallel)
+library(ranger)
+method <- 'DCQ'
+set.seed(42)
+doParallel::registerDoParallel(cores = parallel::detectCores())
+```
+
+
+### Construct all the signature matrices one time
+<p>This prostate data set comes from Henry, Gervaise H., et al. "A cellular anatomy of the normal adult human prostate and prostatic urethra." Cell reports 25.12 (2018): 3530-3542.<p>
+<p>Half of the data are held out as test set by setting 'testOnHalf' to TRUE.<p>
+<p>Result tables are for original cell types and clustered cell types relatively.<p>
+```{r}
+scHenry<-as.matrix(log(ADAPTSdata4::scHenry+1))
+
+resList<-testAllSigMatrices(exprData=scHenry, randomize = TRUE, skipShrink=FALSE, proportional=FALSE,handMetaCluster=NULL,testOnHalf=TRUE)
+
+acc<-cbind(resList$testAcc.shrink,resList$testAcc.aug,resList$testAcc.all,resList$testAcc.seed)
+acc<-acc[c(1,3,5,6), ]
+acc<-cbind(acc,rep(1,4))
+colnames(acc)<-c('Shrunk Matrix','Augmented Matrix','All Gene Matrix','Seed Matrix','actFrac.test')
+deconTable<-round(rbind(resList$estimates.onTest,acc),2)
+
+metacc<-cbind(resList$testAcc.metaAugShrink,resList$testAcc.metaAug,resList$testAcc.metaAll,resList$testAcc.metaSeed)
+metacc<-metacc[c(1,3,5,6), ]
+metacc<-cbind(metacc,rep(1,4))
+colnames(metacc)<-c('Shrunk Meta','Augmented Meta','All Gene Meta','Seed Meta','actFrac.test')
+metadeconTable<-round(rbind(resList$estimates.onTest.meta,metacc),2)
+
+print(deconTable)
+print(metadeconTable)
+
+```
+
+
+
+
+
+### Construct all the signature matrices iteratively until results converge with 1% tolerance
+<p>The iteration stops when Pearson correlation, Spearman's correlation, mae, and rmse all converge.<p>
+<p>The result table shows the mean accuracy metrics and at which iteration the corresponding metric converges.<p> 
+```{r,fig.show='hide'}
+allResListCov<-loopTillConvergence(numLoops=NULL,fastStop=TRUE,exprData=scHenry,changePer=1,handMetaCluster=NULL,testOnHalf=TRUE)
+meanResListConv<-meanResults(allResListCov,changePer = 1)
+meanResListConvOut<-meanResListConv[c('rho.cor','pVal','spear.rho','mae','rmse','N','convIt.rho.cor','convIt.pVal','convIt.spear.rho','convIt.mae','convIt.rmse')]
+print(round(meanResListConvOut,2))
+```
+
+### Construct all the signature matrices 20 times with 5% tolerance
+The result table shows the mean accuracy metrics of 20 iterations.
+```{r,fig.show='hide'}
+allResList<-loopTillConvergence(numLoops=20,fastStop=TRUE,exprData=scHenry,changePer=5,handMetaCluster=NULL,testOnHalf=TRUE)
+meanResList<-meanResults(allResList,changePer = 5)
+meanResListOut<-meanResList[c('rho.cor','pVal','spear.rho','mae','rmse','N','convIt.rho.cor','convIt.pVal','convIt.spear.rho','convIt.mae','convIt.rmse')]
+print(round(meanResListOut,2))
+```
